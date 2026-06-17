@@ -12,6 +12,8 @@
     #include <windows.h>
     #include <windowsx.h>  // param input extraction
     #include <stdlib.h>
+    #include <dwmapi.h> // Include Desktop Window Manager API
+    #pragma comment(lib, "dwmapi.lib") // Change title bar(caption) color
 
     // For surface creation
     #include <vulkan/vulkan.h>
@@ -104,6 +106,12 @@
         } else {
             state->hwnd = handle;
         }
+
+        // Note: Colors are represented in 0x00BBGGRR format (Hex)
+        //COLORREF color = 0x0000FF00; // Example: Bright Green (Green=FF)
+        //DwmSetWindowAttribute(state->hwnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
+        BOOL value = TRUE; // TRUE for Dark Mode, FALSE for Light Mode
+        DwmSetWindowAttribute(state->hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
 
         // Show the window
         b32 should_activate = 1;  // TODO: if the window should not accept input, this should be false.
@@ -231,12 +239,17 @@
                 return 0;
             case WM_SIZE: {
                 // Get the updated size.
-                // RECT r;
-                // GetClientRect(hwnd, &r);
-                // u32 width = r.right - r.left;
-                // u32 height = r.bottom - r.top;
+               RECT r;
+                GetClientRect(hwnd, &r);
+                u32 width = r.right - r.left;
+                u32 height = r.bottom - r.top;
 
-                // TODO: Fire an event for window resize.
+                // Fire the event. The application layer should pick this up, but not handle it
+                // as it shouldn be visible to other parts of the application.
+                event_context context;
+                context.data.u16[0] = (u16)width;
+                context.data.u16[1] = (u16)height;
+                event_fire(EVENT_CODE_RESIZED, 0, context);
             } break;
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
